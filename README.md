@@ -6,7 +6,7 @@
 
 ## Features
 
-* NTP time
+* NTP time with timezone support (US Central by default)
 * Brightness adjustement (manually or automatically)
 * Character animation / effect
 * Set the position of the clock
@@ -41,6 +41,9 @@ number changes.
 * Adjust the brightness with the dedicated buttons
 * Change the clock and calendar positions with A button
 * Change the effect with B button
+* Time is synchronized via NTP and adjusted to the US Central timezone by default. You can
+  override it by passing a timezone name (currently supports "US/Central" or
+  "America/Chicago") or an explicit UTC offset to `set_time`.
 
 ## Use
 
