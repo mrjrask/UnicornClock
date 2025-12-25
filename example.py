@@ -39,9 +39,6 @@ ORANGE = graphics.create_pen(255, 128, 0)
 RED = graphics.create_pen(255, 0, 0)
 WHITE = graphics.create_pen(255, 255, 255)
 
-
-UTC_OFFSET = 2
-
 SETTINGS_FILE = 'demo.json'
 
 
@@ -88,7 +85,7 @@ def wlan_connection():
 
     wait(ORANGE)
 
-    set_time(UTC_OFFSET)
+    set_time()
 
     wait(GREEN)
 
