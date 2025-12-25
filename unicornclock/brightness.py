@@ -3,6 +3,10 @@ import uasyncio as asyncio
 # Todo:
 # - Change the brightness smoothly
 
+def clamp(value, min_value, max_value):
+    return max(min_value, min(value, max_value))
+
+
 def mapval(value, in_min, in_max, out_min, out_max):
     return (
         (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
@@ -17,6 +21,10 @@ class Brightness:
     mode = MODE_AUTO
     level = 50
     offset = 0
+    smooth_factor = 0.2
+    min_level = 0
+    max_level = 100
+    min_offset = -100
 
     def __init__(
             self,
@@ -24,11 +32,20 @@ class Brightness:
             level=50,
             mode=MODE_AUTO,
             offset=20,
+            smooth_factor=0.2,
+            min_level=0,
+            max_level=100,
+            min_offset=-100,
         ):
         self.galactic = galactic
         self.level = level
         self.mode = mode
         self.offset = offset
+        self.auto_level = None
+        self.smooth_factor = smooth_factor
+        self.min_level = min_level
+        self.max_level = max_level
+        self.min_offset = min_offset
 
     def export(self):
         return {
@@ -49,11 +66,25 @@ class Brightness:
         return mapval(self.galactic.light(), 0, 4095, 1, 100)
 
     def update(self):
-        value = self.level if self.mode == self.MODE_MANUAL else \
-            self.get_auto_level()
+        if self.mode == self.MODE_MANUAL:
+            value = self.level
+        else:
+            raw_auto_level = self.get_auto_level()
+            if self.auto_level is None:
+                self.auto_level = raw_auto_level
+            else:
+                self.auto_level = (
+                    self.auto_level * (1 - self.smooth_factor)
+                    + raw_auto_level * self.smooth_factor
+                )
 
+            value = self.auto_level
+
+        corrected = self.get_corrected_level(
+            clamp(value + self.offset, self.min_level, self.max_level)
+        )
         self.galactic.set_brightness(
-            self.get_corrected_level(value + self.offset)
+            corrected
         )
 
     def set_mode(self, mode, offset=0):
@@ -74,9 +105,11 @@ class Brightness:
         `level` need to be integer between 0 and 100
         """
         if self.mode == self.MODE_MANUAL:
-            self.galactic.adjust_brightness(self.get_corrected_level(value))
+            self.level = clamp(self.level + value, self.min_level, self.max_level)
         else:
-            self.offset += value
+            self.offset = clamp(
+                self.offset + value, self.min_offset, self.max_level
+            )
 
     async def run(self):
         while True:
