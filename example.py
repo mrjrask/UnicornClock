@@ -141,6 +141,7 @@ effects = [
 ]
 
 clock = None
+am_pm_mode = False
 
 async def load_example(effect_index, **kwargs):
     global clock
@@ -155,7 +156,7 @@ async def load_example(effect_index, **kwargs):
     default_kwargs = {
         'x': Position.RIGHT,
         'show_seconds': True,
-        'am_pm_mode': False,
+        'am_pm_mode': am_pm_mode,
     }
 
     if kwargs:
@@ -181,21 +182,38 @@ except (OSError, ValueError):
 else:
     mode = d.get('mode', 0)
     effect = d.get('effect', 0)
+    am_pm_mode = d.get('am_pm_mode', False)
     print('[OK]')
 
 
 async def buttons_handler(brightness, calendar, update_calendar):
     clock_kwargs = {}
+    last_change_time = None
+
+    def mark_settings_change():
+        nonlocal last_change_time
+        last_change_time = time.time()
 
     @debounce()
     def switch_mode(p):
         global mode
         mode = (mode + 1) % 4
+        mark_settings_change()
 
     @debounce()
     def switch_effect(p):
         global effect
         effect = (effect + 1) % len(effects)
+        mark_settings_change()
+
+    @debounce()
+    def switch_am_pm(p):
+        global am_pm_mode
+        am_pm_mode = not am_pm_mode
+        if clock:
+            clock.am_pm_mode = am_pm_mode
+            clock.full_update()
+        mark_settings_change()
 
     @debounce()
     def brightness_down(p):
@@ -213,6 +231,9 @@ async def buttons_handler(brightness, calendar, update_calendar):
     Pin(GalacticUnicorn.SWITCH_B, Pin.IN, Pin.PULL_UP) \
         .irq(trigger=Pin.IRQ_FALLING, handler=switch_effect)
 
+    Pin(GalacticUnicorn.SWITCH_C, Pin.IN, Pin.PULL_UP) \
+        .irq(trigger=Pin.IRQ_FALLING, handler=switch_am_pm)
+
     Pin(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN, Pin.IN, Pin.PULL_UP) \
         .irq(trigger=Pin.IRQ_FALLING, handler=brightness_down)
 
@@ -224,31 +245,33 @@ async def buttons_handler(brightness, calendar, update_calendar):
 
         print('Change (mode %i, effect %i)' % (mode, effect))
 
+        clock_kwargs = {'am_pm_mode': am_pm_mode}
+
         if mode == 0:
             calendar.set_position(Position.LEFT)
-            clock_kwargs = {
+            clock_kwargs.update({
                 'x': Position.RIGHT,
                 'callback_hour_change': update_calendar,
-            }
+            })
         elif mode == 1:
             calendar.set_position(Position.RIGHT)
-            clock_kwargs = {
+            clock_kwargs.update({
                 'x': Position.LEFT,
                 'callback_hour_change': update_calendar,
-            }
+            })
         elif mode == 2:
-            clock_kwargs = {
+            clock_kwargs.update({
                 'x': Position.CENTER,
                 'callback_hour_change': None,
                 'space_between_char': 2,
-            }
+            })
         elif mode == 3:
-            clock_kwargs = {
+            clock_kwargs.update({
                 'show_seconds': False,
                 'x': Position.CENTER,
                 'callback_hour_change': None,
                 'space_between_char': 2,
-            }
+            })
 
         await load_example(effect, **clock_kwargs)
 
@@ -265,12 +288,16 @@ async def buttons_handler(brightness, calendar, update_calendar):
         if mode != current_mode or effect != current_effect:
             await load_current_example()
 
-            last_change_time = time.time()
+            mark_settings_change()
 
         if last_change_time and last_change_time + 5 < time.time():
             print('Saving the settings file')
             with open(SETTINGS_FILE, 'w') as f:
-                f.write(json.dumps({'mode': mode, 'effect': effect}))
+                f.write(json.dumps({
+                    'mode': mode,
+                    'effect': effect,
+                    'am_pm_mode': am_pm_mode,
+                }))
 
             last_change_time = None
 
