@@ -44,8 +44,15 @@ class Clock(ClockMixin, FontDriver):
         self.font_color = font_color
         self.background_color = background_color
         self.callback_hour_change = callback_hour_change
-        if space_between_char:
-            self.space_between_char = space_between_char
+        self.base_space_between_char = (
+            space_between_char
+            if space_between_char is not None
+            else getattr(self, 'space_between_char', 1)
+        )
+
+        # Override the space calculation to trim the gap before colons while
+        # keeping custom spacing elsewhere.
+        self.space_between_char = self._space_between_char
 
         if rtc is None:
             import machine
@@ -75,14 +82,30 @@ class Clock(ClockMixin, FontDriver):
 
         _, total, width = self.chars_bounds[-1]
         self.width = total + width
+        self.current_width = self.width
 
         self.screen_width, self.screen_height = self.graphics.get_bounds()
 
         self.set_position(self.requested_x, self.requested_y)
+        self.draw_x = self.x
 
         # Used mainly to initialize data in effect class
         if self.callback_after_init:
             self.callback_after_init()
+
+    def _space_between_char(self, index, char):
+        if char == ':':
+            return 0
+
+        return (
+            self.base_space_between_char(index, char)
+            if callable(self.base_space_between_char)
+            else self.base_space_between_char
+        )
+
+    def update_draw_position(self):
+        extra_space = max(self.width - self.current_width, 0)
+        self.draw_x = self.x + int(extra_space / 2)
 
     def format_time(self, hour, minute, second):
         if self.am_pm_mode:
@@ -94,6 +117,8 @@ class Clock(ClockMixin, FontDriver):
                 self.format_string.format(hour, minute, second),
             )
         ]
+        self.current_width = self.chars_bounds[-1][1] + self.chars_bounds[-1][2]
+        self.update_draw_position()
         return self.format_string.format(hour, minute, second)
 
     def callback_write_char(self, char, index):
@@ -115,7 +140,7 @@ class Clock(ClockMixin, FontDriver):
 
     def write_time(self, time):
         self.graphics.set_pen(self.font_color)
-        self.write_text(time, self.x, self.y)
+        self.write_text(time, self.draw_x, self.y)
         self.galactic.update(self.graphics)
 
     last_time = None
@@ -127,20 +152,20 @@ class Clock(ClockMixin, FontDriver):
 
                 for index, (character, offset, _) in enumerate(self.chars_bounds):
                     self.callback_write_char(character, index)
-                    self.write_char(character, self.x + offset, self.y)
+                    self.write_char(character, self.draw_x + offset, self.y)
 
             self.galactic.update(self.graphics)
             self.last_time = time
             return
 
         for index, offset, size, _, character in self.iter_on_changes(time):
-            with Clip(self.graphics, self.x + offset, 0, size,
+            with Clip(self.graphics, self.draw_x + offset, 0, size,
                       self.screen_height):
                 self.graphics.set_pen(self.background_color)
                 self.graphics.clear()
 
                 self.callback_write_char(character, index)
-                self.write_char(character, self.x + offset, self.y)
+                self.write_char(character, self.draw_x + offset, self.y)
 
         self.galactic.update(self.graphics)
 
