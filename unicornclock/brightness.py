@@ -21,7 +21,7 @@ class Brightness:
     mode = MODE_AUTO
     level = 50
     offset = 0
-    smooth_factor = 0.2
+    smooth_factor = 0.5
     min_level = 0
     max_level = 100
     min_offset = -100
@@ -31,8 +31,8 @@ class Brightness:
             galactic,
             level=50,
             mode=MODE_AUTO,
-            offset=20,
-            smooth_factor=0.2,
+            offset=0,
+            smooth_factor=0.5,
             min_level=0,
             max_level=100,
             min_offset=-100,
@@ -63,7 +63,7 @@ class Brightness:
         return mapval(level, 0, 100, 0, 1)
 
     def get_auto_level(self):
-        return mapval(self.galactic.light(), 0, 4095, 1, 100)
+        return mapval(self.galactic.light(), 0, 4095, 0, 100)
 
     def update(self):
         if self.mode == self.MODE_MANUAL:
@@ -114,4 +114,4 @@ class Brightness:
     async def run(self):
         while True:
             self.update()
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.25)

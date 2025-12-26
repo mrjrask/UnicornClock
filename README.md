@@ -7,7 +7,7 @@
 ## Features
 
 * NTP time with timezone support (US Central by default)
-* Brightness adjustement (manually or automatically)
+* Brightness adjustement (manually or automatically, responsive and very dim in darkness)
 * Character animation / effect
 * Set the position of the clock
 * Change the background color, the text, each letters
