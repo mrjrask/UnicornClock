@@ -302,7 +302,7 @@ async def buttons_handler(brightness, calendar, update_calendar):
 
 
 async def example():
-    brightness = Brightness(galactic, offset=20)
+    brightness = Brightness(galactic)
     brightness.update()
 
     wlan_connection()
