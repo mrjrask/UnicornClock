@@ -64,12 +64,12 @@ class Clock(ClockMixin, FontDriver):
         if self.background_color is None:
             self.background_color = self.graphics.create_pen(0, 0, 0)
 
-        self.format_string = '{:02}:{:02}:{:02}' if self.show_seconds else \
-            '{:02}:{:02}'
+        self.format_string = '{}:{:02}:{:02}' if self.show_seconds else \
+            '{}:{:02}'
 
         self.chars_bounds = [
             x for x in self.get_chars_bounds(
-                self.format_string.format('0', '0', '0'),
+                self.format_string.format('12', '00', '00'),
             )
         ]
 
@@ -86,9 +86,14 @@ class Clock(ClockMixin, FontDriver):
 
     def format_time(self, hour, minute, second):
         if self.am_pm_mode:
-            hour = hour % 12 if hour != 12 else hour
+            hour = hour % 12 or 12
         else:
-            hour = hour % 24
+            hour = hour % 24 or 12
+        self.chars_bounds = [
+            x for x in self.get_chars_bounds(
+                self.format_string.format(hour, minute, second),
+            )
+        ]
         return self.format_string.format(hour, minute, second)
 
     def callback_write_char(self, char, index):
@@ -115,6 +120,19 @@ class Clock(ClockMixin, FontDriver):
 
     last_time = None
     async def update_time(self, time):
+        if self.last_time is None or len(time) != len(self.last_time):
+            with Clip(self.graphics, self.x, 0, self.width, self.screen_height):
+                self.graphics.set_pen(self.background_color)
+                self.graphics.clear()
+
+                for index, (character, offset, _) in enumerate(self.chars_bounds):
+                    self.callback_write_char(character, index)
+                    self.write_char(character, self.x + offset, self.y)
+
+            self.galactic.update(self.graphics)
+            self.last_time = time
+            return
+
         for index, offset, size, _, character in self.iter_on_changes(time):
             with Clip(self.graphics, self.x + offset, 0, size,
                       self.screen_height):
