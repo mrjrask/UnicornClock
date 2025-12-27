@@ -74,9 +74,16 @@ class Clock(ClockMixin, FontDriver):
         self.format_string = '{}:{:02}:{:02}' if self.show_seconds else \
             '{}:{:02}'
 
+        widest_digits = ['88', '88']
+        if self.show_seconds:
+            widest_digits.append('88')
+
         self.chars_bounds = [
             x for x in self.get_chars_bounds(
-                self.format_string.format('12', '00', '00'),
+                # Use a string with wide digits so the calculated width is
+                # large enough to fully clear characters when their width
+                # changes (e.g. going from "12" to "1").
+                self.format_string.format(*widest_digits),
             )
         ]
 
