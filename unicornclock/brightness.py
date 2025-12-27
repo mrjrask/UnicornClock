@@ -37,6 +37,7 @@ class Brightness:
             max_level=100,
             min_offset=-100,
             min_light_level=200,
+            low_light_gamma=2.0,
         ):
         self.galactic = galactic
         self.level = level
@@ -48,6 +49,7 @@ class Brightness:
         self.max_level = max_level
         self.min_offset = min_offset
         self.min_light_level = min_light_level
+        self.low_light_gamma = low_light_gamma
 
     def export(self):
         return {
@@ -67,7 +69,11 @@ class Brightness:
     def get_auto_level(self):
         light_level = clamp(self.galactic.light(),
                             self.min_light_level, 4095)
-        return mapval(light_level, self.min_light_level, 4095, 0, 100)
+        normalized_level = mapval(
+            light_level, self.min_light_level, 4095, 0, 1
+        )
+        adjusted_level = pow(normalized_level, self.low_light_gamma)
+        return adjusted_level * 100
 
     def update(self):
         if self.mode == self.MODE_MANUAL:
