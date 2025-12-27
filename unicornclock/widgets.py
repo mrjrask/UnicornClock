@@ -1,6 +1,6 @@
 import uasyncio as asyncio
 
-from .common import Clip, ClockMixin, Position
+from unicornclock.common import Clip, ClockMixin, Position
 
 
 class Calendar(ClockMixin):

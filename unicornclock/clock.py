@@ -1,8 +1,8 @@
 import uasyncio as asyncio
 
-from .common import Clip, ClockMixin, Position
-from .fonts import default as default_font
-from .fontdriver import FontDriver
+from unicornclock.common import Clip, ClockMixin, Position
+from unicornclock.fonts import default as default_font
+from unicornclock.fontdriver import FontDriver
 
 # Todo:
 # Add await on callback_hour_changed

@@ -1,7 +1,7 @@
 from time import sleep
 
-from .common import Clip
-from .utils import from_hsv
+from unicornclock.common import Clip
+from unicornclock.utils import from_hsv
 
 
 class CharacterSlideEffect:
