@@ -89,10 +89,28 @@ class Clock(ClockMixin, FontDriver):
             hour = hour % 12 if hour != 12 else hour
         else:
             hour = hour % 24
-        return self.format_string.format(hour, minute, second)
+
+        self.hour_tens_off = self.am_pm_mode and 1 <= hour < 10
+
+        hour_str = f"{hour:02d}"
+        minute_str = f"{minute:02d}"
+        second_str = f"{second:02d}"
+
+        if self.show_seconds:
+            return f"{hour_str}:{minute_str}:{second_str}"
+
+        return f"{hour_str}:{minute_str}"
 
     def callback_write_char(self, char, index):
-        self.graphics.set_pen(self.font_color)
+        if (
+            index == 0
+            and self.am_pm_mode
+            and getattr(self, "hour_tens_off", False)
+            and char == "0"
+        ):
+            self.graphics.set_pen(self.background_color)
+        else:
+            self.graphics.set_pen(self.font_color)
 
     def iter_on_changes(self, time):
         """Get information about the changes between last_time and time"""
