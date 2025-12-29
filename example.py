@@ -183,7 +183,7 @@ async def load_example(effect_index, **kwargs):
     default_kwargs = {
         'x': Position.RIGHT,
         'show_seconds': True,
-        'am_pm_mode': False,
+        'am_pm_mode': am_pm_mode,
     }
 
     if kwargs:
@@ -199,6 +199,7 @@ async def load_example(effect_index, **kwargs):
 
 mode = 0
 effect = 0
+am_pm_mode = False
 
 try:
     print('Restoring the settings...', end='')
@@ -209,6 +210,7 @@ except (OSError, ValueError):
 else:
     mode = d.get('mode', 0)
     effect = d.get('effect', 0)
+    am_pm_mode = d.get('am_pm_mode', False)
     print('[OK]')
 
 
@@ -235,11 +237,19 @@ async def buttons_handler(brightness, calendar, update_calendar):
         brightness.adjust(5)
         brightness.update()
 
+    @debounce()
+    def toggle_am_pm(p):
+        global am_pm_mode
+        am_pm_mode = not am_pm_mode
+
     Pin(GalacticUnicorn.SWITCH_A, Pin.IN, Pin.PULL_UP) \
         .irq(trigger=Pin.IRQ_FALLING, handler=switch_mode)
 
     Pin(GalacticUnicorn.SWITCH_B, Pin.IN, Pin.PULL_UP) \
         .irq(trigger=Pin.IRQ_FALLING, handler=switch_effect)
+
+    Pin(GalacticUnicorn.SWITCH_C, Pin.IN, Pin.PULL_UP) \
+        .irq(trigger=Pin.IRQ_FALLING, handler=toggle_am_pm)
 
     Pin(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN, Pin.IN, Pin.PULL_UP) \
         .irq(trigger=Pin.IRQ_FALLING, handler=brightness_down)
@@ -248,7 +258,7 @@ async def buttons_handler(brightness, calendar, update_calendar):
         .irq(trigger=Pin.IRQ_FALLING, handler=brightness_up)
 
     async def load_current_example():
-        nonlocal current_effect, current_mode
+        nonlocal current_effect, current_mode, current_am_pm
 
         print('Change (mode %i, effect %i)' % (mode, effect))
 
@@ -282,15 +292,18 @@ async def buttons_handler(brightness, calendar, update_calendar):
 
         current_mode = mode
         current_effect = effect
+        current_am_pm = am_pm_mode
 
     current_effect = 0
     current_mode = 0
+    current_am_pm = am_pm_mode
 
     await load_current_example()
 
     last_change_time = None
     while True:
-        if mode != current_mode or effect != current_effect:
+        if (mode != current_mode or effect != current_effect or
+                am_pm_mode != current_am_pm):
             await load_current_example()
 
             last_change_time = time.time()
@@ -298,7 +311,11 @@ async def buttons_handler(brightness, calendar, update_calendar):
         if last_change_time and last_change_time + 5 < time.time():
             print('Saving the settings file')
             with open(SETTINGS_FILE, 'w') as f:
-                f.write(json.dumps({'mode': mode, 'effect': effect}))
+                f.write(json.dumps({
+                    'mode': mode,
+                    'effect': effect,
+                    'am_pm_mode': am_pm_mode,
+                }))
 
             last_change_time = None
 
