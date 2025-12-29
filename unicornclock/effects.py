@@ -91,6 +91,9 @@ class RainbowCharEffect(RainbowMixin):
     """
 
     def callback_write_char(self, char, index):
+        if hasattr(self, "handle_hour_tens_off") and self.handle_hour_tens_off(char, index):
+            return
+
         self.set_pen(char, index)
 
 
@@ -101,6 +104,10 @@ class RainbowPixelEffect(RainbowMixin):
     """
 
     def callback_set_pixel(self, char, x, y):
+        if getattr(self, "_current_char_hidden", False):
+            self.graphics.set_pen(self.background_color)
+            return
+
         self.set_pen(char, x)
 
 
@@ -113,6 +120,10 @@ class RainbowMoveEffect(RainbowMixin):
     loop_sleep = 0.01
 
     def callback_set_pixel(self, char, x, y):
+        if getattr(self, "_current_char_hidden", False):
+            self.graphics.set_pen(self.background_color)
+            return
+
         self.set_pen(char, x)
 
     async def update_time(self, time):

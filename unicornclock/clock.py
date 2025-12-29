@@ -22,6 +22,8 @@ class Clock(ClockMixin, FontDriver):
 
     loop_sleep = 0.1
 
+    _current_char_hidden = False
+
     def __init__(
             self,
             galactic,
@@ -101,15 +103,21 @@ class Clock(ClockMixin, FontDriver):
 
         return f"{hour_str}:{minute_str}"
 
-    def callback_write_char(self, char, index):
-        if (
+    def handle_hour_tens_off(self, char, index):
+        self._current_char_hidden = (
             index == 0
             and self.am_pm_mode
             and getattr(self, "hour_tens_off", False)
             and char == "0"
-        ):
+        )
+
+        if self._current_char_hidden:
             self.graphics.set_pen(self.background_color)
-        else:
+
+        return self._current_char_hidden
+
+    def callback_write_char(self, char, index):
+        if not self.handle_hour_tens_off(char, index):
             self.graphics.set_pen(self.font_color)
 
     def iter_on_changes(self, time):
