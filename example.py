@@ -2,6 +2,7 @@ import json
 import machine
 import network
 import time
+import ntptime
 import uasyncio as asyncio
 from galactic import GalacticUnicorn
 from machine import Pin
@@ -40,9 +41,36 @@ RED = graphics.create_pen(255, 0, 0)
 WHITE = graphics.create_pen(255, 255, 255)
 
 
-UTC_OFFSET = 2
-
 SETTINGS_FILE = 'demo.json'
+
+
+def central_utc_offset():
+    """Return the US Central UTC offset (-6 standard, -5 daylight saving).
+
+    Rules used (kept inline to avoid annual maintenance):
+    - DST starts at 2:00 a.m. local standard time on the second Sunday in March
+      (08:00 UTC because CST is UTC-6 before the switch).
+    - DST ends at 2:00 a.m. local daylight time on the first Sunday in November
+      (07:00 UTC because CDT is UTC-5 before the switch back to standard time).
+    """
+
+    def nth_weekday(year, month, weekday, n):
+        first_day = time.mktime((year, month, 1, 0, 0, 0, 0, 0))
+        first_weekday = time.gmtime(first_day)[6]
+        days_until_weekday = (weekday - first_weekday) % 7
+        day = 1 + days_until_weekday + 7 * (n - 1)
+        return time.mktime((year, month, day, 0, 0, 0, 0, 0))
+
+    # Ensure we have an accurate UTC time for the comparison.
+    ntptime.settime()
+
+    current_utc = time.time()
+    year = time.gmtime(current_utc)[0]
+
+    dst_start = nth_weekday(year, 3, 6, 2) + 8 * 3600  # second Sunday in March, 08:00 UTC
+    dst_end = nth_weekday(year, 11, 6, 1) + 7 * 3600  # first Sunday in November, 07:00 UTC
+
+    return -5 if dst_start <= current_utc < dst_end else -6
 
 
 def wlan_connection():
@@ -88,7 +116,7 @@ def wlan_connection():
 
     wait(ORANGE)
 
-    set_time(UTC_OFFSET)
+    set_time(central_utc_offset())
 
     wait(GREEN)
 
