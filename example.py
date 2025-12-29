@@ -238,12 +238,18 @@ async def buttons_handler(brightness, calendar, update_calendar):
 
     @debounce()
     def brightness_down(p):
+        if brightness.is_auto():
+            print('Lux buttons disabled while auto brightness is enabled')
+            return
         brightness.adjust(-5)
         brightness.update()
         log_brightness('Lux - pressed')
 
     @debounce()
     def brightness_up(p):
+        if brightness.is_auto():
+            print('Lux buttons disabled while auto brightness is enabled')
+            return
         brightness.adjust(5)
         brightness.update()
         log_brightness('Lux + pressed')
@@ -253,6 +259,11 @@ async def buttons_handler(brightness, calendar, update_calendar):
         global am_pm_mode
         am_pm_mode = not am_pm_mode
 
+    @debounce()
+    def toggle_auto_brightness(p):
+        brightness.toggle_mode()
+        brightness.update(log_light=brightness.is_auto())
+
     Pin(GalacticUnicorn.SWITCH_A, Pin.IN, Pin.PULL_UP) \
         .irq(trigger=Pin.IRQ_FALLING, handler=switch_mode)
 
@@ -261,6 +272,9 @@ async def buttons_handler(brightness, calendar, update_calendar):
 
     Pin(GalacticUnicorn.SWITCH_C, Pin.IN, Pin.PULL_UP) \
         .irq(trigger=Pin.IRQ_FALLING, handler=toggle_am_pm)
+
+    Pin(GalacticUnicorn.SWITCH_D, Pin.IN, Pin.PULL_UP) \
+        .irq(trigger=Pin.IRQ_FALLING, handler=toggle_auto_brightness)
 
     Pin(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN, Pin.IN, Pin.PULL_UP) \
         .irq(trigger=Pin.IRQ_FALLING, handler=brightness_down)
@@ -334,7 +348,7 @@ async def buttons_handler(brightness, calendar, update_calendar):
 
 
 async def example():
-    brightness = Brightness(galactic, offset=20)
+    brightness = Brightness(galactic)
     brightness.update()
     print('Default brightness at launch: %.2f' % brightness.galactic.get_brightness())
 
