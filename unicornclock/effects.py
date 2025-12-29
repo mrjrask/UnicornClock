@@ -127,11 +127,16 @@ class RainbowMoveEffect(RainbowMixin):
         self.set_pen(char, x)
 
     async def update_time(self, time):
-        for character, offset, size in self.get_chars_bounds(time):
+        for index, (character, offset, size) in enumerate(
+            self.get_chars_bounds(time)
+        ):
             with Clip(self.graphics, self.x + offset, self.y, size,
                       self.screen_height):
                 self.graphics.set_pen(self.background_color)
                 self.graphics.clear()
+
+                if self.callback_write_char:
+                    self.callback_write_char(character, index)
 
                 self.write_char(character, self.x + offset, self.y)
 
