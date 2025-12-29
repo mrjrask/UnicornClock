@@ -217,6 +217,9 @@ else:
 async def buttons_handler(brightness, calendar, update_calendar):
     clock_kwargs = {}
 
+    def log_brightness(action):
+        print('%s (brightness %.2f)' % (action, brightness.galactic.get_brightness()))
+
     @debounce()
     def switch_mode(p):
         global mode
@@ -231,11 +234,13 @@ async def buttons_handler(brightness, calendar, update_calendar):
     def brightness_down(p):
         brightness.adjust(-5)
         brightness.update()
+        log_brightness('Lux - pressed')
 
     @debounce()
     def brightness_up(p):
         brightness.adjust(5)
         brightness.update()
+        log_brightness('Lux + pressed')
 
     @debounce()
     def toggle_am_pm(p):
@@ -325,6 +330,7 @@ async def buttons_handler(brightness, calendar, update_calendar):
 async def example():
     brightness = Brightness(galactic, offset=20)
     brightness.update()
+    print('Default brightness at launch: %.2f' % brightness.galactic.get_brightness())
 
     wlan_connection()
 
