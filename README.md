@@ -1,105 +1,95 @@
 # UnicornClock
 
+UnicornClock is a MicroPython clock and calendar demo for the Pimoroni Galactic Unicorn. It pairs animated clock effects with an optional calendar widget, automatic or manual brightness control, Wi-Fi time synchronisation, and simple configuration you can tweak directly on the device.
+
 ![Unicorn Clock Example](demo.gif)
 
 [Example video](https://www.youtube.com/watch?v=Gvnccr2_wY0)
 
 ## Features
 
-* NTP time
-* Brightness adjustement (manually or automatically)
-* Character animation / effect
-* Set the position of the clock
-* Change the background color, the text, each letters
-* You can change the spacing between each letters
-* Create your own font
-* Easily hackable
-* Display a calendar frame
+* NTP-backed time with helper utilities for setting timezone offsets.
+* Multiple clock effects, including per-character colour ramps and pixel-based animations.
+* Calendar widget that draws a dated calendar frame alongside the clock.
+* Adjustable clock position (left, right, or centred) and configurable spacing between characters.
+* 12/24-hour toggle, optional seconds display, and palette control for fonts and backgrounds.
+* Automatic brightness tied to the Galactic Unicorn light sensor with on-device offsets, or manual brightness control.
+* Persisted settings (`demo.json`) for the current layout, effect, and AM/PM mode.
+* Easily hackable font and effect system so you can extend characters, backgrounds, and animations.
 
 ## Compatibility
 
-- Pimoroni Galactic Unicorn
+- Pimoroni Galactic Unicorn (tested)
 - Work in progress for the Pimoroni Cosmic Unicorn
 
 ## Installation
 
-Copy the files into the device via [Thonny](https://thonny.org/) or the way
-you want.
+1. Copy the repository files to your device (for example with [Thonny](https://thonny.org/)).
+2. Create a `secrets.py` file with your network credentials:
 
-Create a `secrets.py` file:
+   ```python
+   WLAN_SSID = "Your WLAN SSID"
+   WLAN_PASSWORD = "Your secrets password"
+   ```
 
-```python
-WLAN_SSID = 'Your WLAN SSID'
-WLAN_PASSWORD = 'Your secrets password'
-```
+3. If you need a different timezone, adjust the `central_utc_offset()` helper in `example.py` or call `set_time()` from `unicornclock.utils` with the appropriate offset.
 
-### Example
+## Running the example
 
-The [example.py](example.py) display the calendar widget and the clock with an effect when
-number changes.
+The example combines the clock and calendar widgets, synchronises time over Wi-Fi, and exposes on-device controls:
 
-* Adjust the brightness with the dedicated buttons
-* Change the clock and calendar positions with A button
-* Change the effect with B button
+* Button A: switch between layouts (calendar left/right, centred clock with and without seconds).
+* Button B: cycle through the bundled clock effects.
+* Button C: toggle 12/24-hour display.
+* Brightness buttons: raise or lower brightness (affects the auto-brightness offset in automatic mode).
 
-## Use
+Settings are saved to `demo.json` after five seconds without further changes so your preferred layout, effect, and hour mode persist across reboots.
 
-Here is a detailed example explaining how to use this project.
+To run the demo on the device, execute `main.py` (which forwards to `example.py`).
+
+## Library usage
+
+You can reuse the clock and brightness helpers in your own program. A minimal example that shows a moving rainbow clock is below:
 
 ```python
 import uasyncio as asyncio
-
-# This imports is useful to configure the screen
 from galactic import GalacticUnicorn
 from picographics import DISPLAY_GALACTIC_UNICORN, PicoGraphics
 
-# We want to update the brightness and change the position
 from unicornclock import Brightness, Clock, Position
-
-# Import the rainbow move effect
 from unicornclock.effects import RainbowMoveEffect
 
-# Load the GalacticUnicorn and PicoGraphics
-galactic = GalacticUnicorn()
+# Create hardware objects
+unicorn = GalacticUnicorn()
 graphics = PicoGraphics(DISPLAY_GALACTIC_UNICORN)
 
-# Here, we declare a rainbow clock by using the RainbowMoveEffect with Clock
-class RainbowMoveEffectClock(RainbowMoveEffect, Clock):
+class RainbowClock(RainbowMoveEffect, Clock):
     pass
 
-async def example():
-    # Create Brightness object for handling the brightness of the screen
-    # depending of the brightness of the piece (screens have light sensors).
-    brightness = Brightness(galactic)
-
-    # Creating the Clock
-    clock = RainbowMoveEffectClock(
-        galactic,
+async def main():
+    brightness = Brightness(unicorn, offset=20)
+    clock = RainbowClock(
+        unicorn,
         graphics,
         x=Position.CENTER,
         show_seconds=True,
-        am_pm_mode=False,
     )
 
-    # And now, we creating the 2 tasks
     asyncio.create_task(brightness.run())
     asyncio.create_task(clock.run())
 
+    # Keep the tasks alive
+    while True:
+        await asyncio.sleep(1)
+
 loop = asyncio.get_event_loop()
-loop.run_until_complete(example())
+loop.run_until_complete(main())
 loop.run_forever()
 ```
 
-## TODO
-
-Here is what I plan to add and feel free to make suggestions or code submissions.
-
-* PID controlled brightness for auto mode
-* ~~Save the calendar position / effect and restore it on the boot~~
-* Ability to drive the screen by an HTTP API
-* Handle sound
+Explore `unicornclock/effects.py` for more effect mixins and `unicornclock/widgets.py` for the calendar widget you can pair with the clock.
 
 ## Contribute
 
-* Your code must respects `flake8` and `isort` tools
-* Format your commits with `Commit Conventional` (https://www.conventionalcommits.org/en/v1.0.0/)
+* Code must respect `flake8` and `isort`.
+* Format commits with [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
