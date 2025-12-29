@@ -1,3 +1,5 @@
+import time
+
 import uasyncio as asyncio
 
 
@@ -10,10 +12,16 @@ class Brightness:
     level = 50
     current_brightness = 0.0
 
-    MIN_LIGHT = 14
-    MAX_LIGHT = 19
+    MIN_LIGHT = 15
+    MAX_LIGHT = 21
     MIN_BRIGHTNESS = 0.06
-    MAX_BRIGHTNESS = 0.36
+    MAX_BRIGHTNESS = 0.31
+
+    # Auto brightness tuning
+    LIGHT_SAMPLES = 5
+    TARGET_CHANGE_DELAY_MS = 1000
+    TARGET_EPSILON = 0.005
+    AUTO_POLL_INTERVAL = 0.5
 
     def __init__(
             self,
@@ -25,6 +33,10 @@ class Brightness:
         self.level = level
         self.mode = mode
         self.current_brightness = self.galactic.get_brightness()
+        self.light_readings = []
+        self.stable_target = self.get_target_brightness()
+        self.pending_target = None
+        self.pending_since = None
 
     def export(self):
         return {
@@ -40,11 +52,18 @@ class Brightness:
     def get_corrected_level(self, level):
         return max(0, min(1, level / 100))
 
-    def get_target_brightness(self):
+    def record_light_reading(self):
+        light_value = self.galactic.light()
+        self.light_readings.append(light_value)
+        if len(self.light_readings) > self.LIGHT_SAMPLES:
+            self.light_readings.pop(0)
+        return sum(self.light_readings) / len(self.light_readings)
+
+    def get_target_brightness(self, *, log_light=False):
         if self.mode == self.MODE_MANUAL:
             return self.get_corrected_level(self.level)
 
-        light_value = self.galactic.light()
+        light_value = self.record_light_reading()
 
         if light_value <= self.MIN_LIGHT:
             target = self.MIN_BRIGHTNESS
@@ -57,15 +76,38 @@ class Brightness:
                 position * (self.MAX_BRIGHTNESS - self.MIN_BRIGHTNESS)
             )
 
+        if log_light:
+            print('Auto brightness: light %.2f -> target %.2f' % (
+                light_value, target
+            ))
+
         return max(0, min(1, target))
 
-    def update(self, *, log_light=False):
-        target = self.get_target_brightness()
+    def _is_target_close(self, target_a, target_b):
+        return abs(target_a - target_b) < self.TARGET_EPSILON
 
-        if self.mode == self.MODE_AUTO and log_light:
-            print('Auto brightness: light %d -> target %.2f' % (
-                self.galactic.light(), target
-            ))
+    def update(self, *, log_light=False):
+        target = self.get_target_brightness(log_light=log_light)
+
+        if self.mode == self.MODE_AUTO:
+            now = time.ticks_ms()
+            if self._is_target_close(target, self.stable_target):
+                self.pending_target = None
+                self.pending_since = None
+            else:
+                if self.pending_target is None or not self._is_target_close(target, self.pending_target):
+                    self.pending_target = target
+                    self.pending_since = now
+                elif self.pending_since and time.ticks_diff(now, self.pending_since) >= self.TARGET_CHANGE_DELAY_MS:
+                    self.stable_target = self.pending_target
+                    self.pending_target = None
+                    self.pending_since = None
+
+            target = self.stable_target
+        else:
+            self.stable_target = target
+            self.pending_target = None
+            self.pending_since = None
 
         # Smooth transition toward the target brightness.
         step = 0.02
@@ -113,4 +155,4 @@ class Brightness:
         while True:
             log_light = self.is_auto()
             self.update(log_light=log_light)
-            await asyncio.sleep(0.25 if self.is_auto() else 1)
+            await asyncio.sleep(self.AUTO_POLL_INTERVAL if self.is_auto() else 1)
