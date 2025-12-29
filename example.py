@@ -218,7 +218,13 @@ async def buttons_handler(brightness, calendar, update_calendar):
     clock_kwargs = {}
 
     def log_brightness(action):
-        print('%s (brightness %.2f)' % (action, brightness.galactic.get_brightness()))
+        print(
+            '%s (brightness %.2f, light %d)' % (
+                action,
+                brightness.galactic.get_brightness(),
+                brightness.galactic.light(),
+            )
+        )
 
     @debounce()
     def switch_mode(p):
