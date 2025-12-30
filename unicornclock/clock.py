@@ -88,7 +88,7 @@ class Clock(ClockMixin, FontDriver):
 
     def format_time(self, hour, minute, second):
         if self.am_pm_mode:
-            hour = hour % 12 if hour != 12 else hour
+            hour = hour % 12 or 12
         else:
             hour = hour % 24
 
