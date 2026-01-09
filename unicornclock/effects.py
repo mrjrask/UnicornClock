@@ -147,3 +147,31 @@ class RainbowMoveEffect(RainbowMixin):
 
     async def need_update(self, hour, minute, second):
         return True
+
+
+class SolidMoveEffect:
+    """Solid move effect
+
+    Redraw the characters at each update without changing their positions.
+    """
+
+    loop_sleep = 0.01
+
+    async def update_time(self, time):
+        for index, (character, offset, size) in enumerate(
+            self.get_chars_bounds(time)
+        ):
+            with Clip(self.graphics, self.x + offset, self.y, size,
+                      self.screen_height):
+                self.graphics.set_pen(self.background_color)
+                self.graphics.clear()
+
+                if self.callback_write_char:
+                    self.callback_write_char(character, index)
+
+                self.write_char(character, self.x + offset, self.y)
+
+        self.galactic.update(self.graphics)
+
+    async def need_update(self, hour, minute, second):
+        return True
