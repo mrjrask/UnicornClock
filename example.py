@@ -38,8 +38,10 @@ BLUE = graphics.create_pen(0, 0, 255)
 GREEN = graphics.create_pen(0, 255, 0)
 GREY = graphics.create_pen(100, 100, 100)
 ORANGE = graphics.create_pen(255, 128, 0)
+PURPLE = graphics.create_pen(128, 0, 255)
 RED = graphics.create_pen(255, 0, 0)
 WHITE = graphics.create_pen(255, 255, 255)
+YELLOW = graphics.create_pen(255, 255, 0)
 
 
 SETTINGS_FILE = 'demo.json'
@@ -164,8 +166,40 @@ class RainbowMoveEffectClock(RainbowMoveEffect, NoSpaceClock):
     pass
 
 
-class RedMoveEffectClock(SolidMoveEffect, NoSpaceClock):
+class SolidColorMoveEffectClock(SolidMoveEffect, NoSpaceClock):
+    separator_color = WHITE
+
+    def callback_write_char(self, char, index):
+        if self.handle_hour_tens_off(char, index):
+            return
+        if char == ':':
+            graphics.set_pen(self.separator_color)
+        else:
+            graphics.set_pen(self.font_color)
+
+
+class RedMoveEffectClock(SolidColorMoveEffectClock):
     font_color = RED
+
+
+class OrangeMoveEffectClock(SolidColorMoveEffectClock):
+    font_color = ORANGE
+
+
+class YellowMoveEffectClock(SolidColorMoveEffectClock):
+    font_color = YELLOW
+
+
+class GreenMoveEffectClock(SolidColorMoveEffectClock):
+    font_color = GREEN
+
+
+class BlueMoveEffectClock(SolidColorMoveEffectClock):
+    font_color = BLUE
+
+
+class PurpleMoveEffectClock(SolidColorMoveEffectClock):
+    font_color = PURPLE
 
 
 effects = [
@@ -174,6 +208,11 @@ effects = [
     RainbowPixelEffectClock,
     RainbowMoveEffectClock,
     RedMoveEffectClock,
+    OrangeMoveEffectClock,
+    YellowMoveEffectClock,
+    GreenMoveEffectClock,
+    BlueMoveEffectClock,
+    PurpleMoveEffectClock,
 ]
 
 clock = None
