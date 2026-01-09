@@ -131,6 +131,8 @@ class NoSpaceClock(Clock):
 class SimpleClock(NoSpaceClock):
 
     def callback_write_char(self, char, index):
+        if self.handle_hour_tens_off(char, index):
+            return
         colors = [
             GREY, WHITE,
             RED,
