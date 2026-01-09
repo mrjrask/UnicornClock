@@ -43,8 +43,14 @@ class Clock(ClockMixin, FontDriver):
         self.requested_x, self.requested_y = x, y
         self.show_seconds = show_seconds
         self.am_pm_mode = am_pm_mode
-        self.font_color = font_color
-        self.background_color = background_color
+        self.font_color = (
+            font_color if font_color is not None else self.font_color
+        )
+        self.background_color = (
+            background_color
+            if background_color is not None
+            else self.background_color
+        )
         self.callback_hour_change = callback_hour_change
         if space_between_char:
             self.space_between_char = space_between_char
