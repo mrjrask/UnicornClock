@@ -14,6 +14,7 @@ from unicornclock.effects import (
     RainbowCharEffect,
     RainbowPixelEffect,
     RainbowMoveEffect,
+    SolidMoveEffect,
 )
 from unicornclock.utils import debounce, set_time
 from unicornclock.widgets import Calendar
@@ -163,11 +164,16 @@ class RainbowMoveEffectClock(RainbowMoveEffect, NoSpaceClock):
     pass
 
 
+class RedMoveEffectClock(SolidMoveEffect, NoSpaceClock):
+    font_color = RED
+
+
 effects = [
     SimpleClock,
     RainbowCharEffectClock,
     RainbowPixelEffectClock,
     RainbowMoveEffectClock,
+    RedMoveEffectClock,
 ]
 
 clock = None
