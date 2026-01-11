@@ -199,7 +199,14 @@ class HourlyColorCycleEffect:
         self.separator_color = self.graphics.create_pen(255, 255, 255)
         self.current_color = self.graphics.create_pen(255, 0, 0)
         self._shuffle_cycle_colors()
-        self.callback_hour_change = self._on_hour_change
+        existing_callback = self.callback_hour_change
+
+        def on_hour_change(hour):
+            self._on_hour_change(hour)
+            if existing_callback:
+                existing_callback(hour)
+
+        self.callback_hour_change = on_hour_change
 
     def _shuffle_cycle_colors(self):
         self._cycle_order = list(self._cycle_colors)
