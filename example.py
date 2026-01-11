@@ -11,6 +11,7 @@ from picographics import DISPLAY_GALACTIC_UNICORN, PicoGraphics
 from unicornclock import Brightness, Clock, Position
 from unicornclock.effects import (
     CharacterSlideDownEffect,
+    HourlyColorCycleEffect,
     RainbowCharEffect,
     RainbowPixelEffect,
     RainbowMoveEffect,
@@ -202,6 +203,10 @@ class PurpleMoveEffectClock(SolidColorMoveEffectClock):
     font_color = PURPLE
 
 
+class HourlyColorCycleEffectClock(HourlyColorCycleEffect, NoSpaceClock):
+    pass
+
+
 effects = [
     SimpleClock,
     RainbowCharEffectClock,
@@ -213,6 +218,7 @@ effects = [
     GreenMoveEffectClock,
     BlueMoveEffectClock,
     PurpleMoveEffectClock,
+    HourlyColorCycleEffectClock,
 ]
 
 clock = None

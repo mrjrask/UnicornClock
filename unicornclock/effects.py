@@ -175,3 +175,69 @@ class SolidMoveEffect:
 
     async def need_update(self, hour, minute, second):
         return True
+
+
+class HourlyColorCycleEffect:
+    """Hourly color cycle effect.
+
+    Cycle through red, orange, yellow, green, blue, purple over one hour.
+    """
+
+    loop_sleep = 0.1
+
+    _cycle_colors = (
+        (255, 0, 0),
+        (255, 128, 0),
+        (255, 255, 0),
+        (0, 255, 0),
+        (0, 0, 255),
+        (128, 0, 255),
+    )
+
+    def callback_after_init(self):
+        self.separator_color = self.graphics.create_pen(255, 255, 255)
+        self.current_color = self.graphics.create_pen(255, 0, 0)
+
+    def _interpolate_channel(self, start, end, ratio):
+        return int(start + (end - start) * ratio)
+
+    def _get_cycle_color(self, hour, minute, second):
+        seconds = (minute * 60) + second
+        segment_length = 3600 / len(self._cycle_colors)
+        segment = int(seconds // segment_length)
+        ratio = (seconds % segment_length) / segment_length
+        start = self._cycle_colors[segment]
+        end = self._cycle_colors[(segment + 1) % len(self._cycle_colors)]
+        red = self._interpolate_channel(start[0], end[0], ratio)
+        green = self._interpolate_channel(start[1], end[1], ratio)
+        blue = self._interpolate_channel(start[2], end[2], ratio)
+        return self.graphics.create_pen(red, green, blue)
+
+    def callback_write_char(self, char, index):
+        if self.handle_hour_tens_off(char, index):
+            return
+
+        if char == ':':
+            self.graphics.set_pen(self.separator_color)
+        else:
+            self.graphics.set_pen(self.current_color)
+
+    async def update_time(self, time):
+        for index, (character, offset, size) in enumerate(
+            self.get_chars_bounds(time)
+        ):
+            with Clip(self.graphics, self.x + offset, self.y, size,
+                      self.screen_height):
+                self.graphics.set_pen(self.background_color)
+                self.graphics.clear()
+
+                if self.callback_write_char:
+                    self.callback_write_char(character, index)
+
+                self.write_char(character, self.x + offset, self.y)
+
+        self.galactic.update(self.graphics)
+
+    async def need_update(self, hour, minute, second):
+        self.current_color = self._get_cycle_color(hour, minute, second)
+        return second != self.last_second
