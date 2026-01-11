@@ -1,5 +1,6 @@
 import random
 from time import sleep
+import uasyncio as asyncio
 
 from .common import Clip
 from .utils import from_hsv
@@ -199,6 +200,7 @@ class HourlyColorCycleEffect:
         self.separator_color = self.graphics.create_pen(255, 255, 255)
         self.current_color = self.graphics.create_pen(255, 0, 0)
         self._shuffle_cycle_colors()
+        self._startup_animation_done = False
         existing_callback = self.callback_hour_change
 
         def on_hour_change(hour):
@@ -223,6 +225,24 @@ class HourlyColorCycleEffect:
         self.current_color = self.graphics.create_pen(
             start[0], start[1], start[2]
         )
+
+    async def _run_startup_animation(self, hour, minute, second):
+        time_string = self.format_time(hour, minute, second)
+        white = self.graphics.create_pen(255, 255, 255)
+
+        self.current_color = white
+        self.last_time = None
+        await self.update_time(time_string)
+
+        for red, green, blue in getattr(self, "_cycle_order", self._cycle_colors):
+            self.current_color = self.graphics.create_pen(red, green, blue)
+            self.last_time = None
+            await self.update_time(time_string)
+            await asyncio.sleep(0.03)
+
+        self.current_color = self._get_cycle_color(hour, minute, second)
+        self.last_time = None
+        await self.update_time(time_string)
 
     def _interpolate_channel(self, start, end, ratio):
         return int(start + (end - start) * ratio)
@@ -266,5 +286,9 @@ class HourlyColorCycleEffect:
         self.galactic.update(self.graphics)
 
     async def need_update(self, hour, minute, second):
+        if not getattr(self, "_startup_animation_done", False):
+            await self._run_startup_animation(hour, minute, second)
+            self._startup_animation_done = True
+
         self.current_color = self._get_cycle_color(hour, minute, second)
         return second != self.last_second
