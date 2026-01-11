@@ -1,3 +1,4 @@
+import random
 from time import sleep
 
 from .common import Clip
@@ -197,17 +198,31 @@ class HourlyColorCycleEffect:
     def callback_after_init(self):
         self.separator_color = self.graphics.create_pen(255, 255, 255)
         self.current_color = self.graphics.create_pen(255, 0, 0)
+        self._shuffle_cycle_colors()
+        self.callback_hour_change = self._on_hour_change
+
+    def _shuffle_cycle_colors(self):
+        self._cycle_order = list(self._cycle_colors)
+        random.shuffle(self._cycle_order)
+
+    def _on_hour_change(self, hour):
+        self._shuffle_cycle_colors()
+        start = self._cycle_order[0]
+        self.current_color = self.graphics.create_pen(
+            start[0], start[1], start[2]
+        )
 
     def _interpolate_channel(self, start, end, ratio):
         return int(start + (end - start) * ratio)
 
     def _get_cycle_color(self, hour, minute, second):
         seconds = (minute * 60) + second
-        segment_length = 3600 / len(self._cycle_colors)
+        cycle_order = getattr(self, "_cycle_order", self._cycle_colors)
+        segment_length = 3600 / len(cycle_order)
         segment = int(seconds // segment_length)
         ratio = (seconds % segment_length) / segment_length
-        start = self._cycle_colors[segment]
-        end = self._cycle_colors[(segment + 1) % len(self._cycle_colors)]
+        start = cycle_order[segment]
+        end = cycle_order[(segment + 1) % len(cycle_order)]
         red = self._interpolate_channel(start[0], end[0], ratio)
         green = self._interpolate_channel(start[1], end[1], ratio)
         blue = self._interpolate_channel(start[2], end[2], ratio)
