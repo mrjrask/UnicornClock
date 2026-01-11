@@ -203,7 +203,12 @@ class HourlyColorCycleEffect:
 
     def _shuffle_cycle_colors(self):
         self._cycle_order = list(self._cycle_colors)
-        random.shuffle(self._cycle_order)
+        for index in range(len(self._cycle_order) - 1, 0, -1):
+            swap_index = random.randint(0, index)
+            self._cycle_order[index], self._cycle_order[swap_index] = (
+                self._cycle_order[swap_index],
+                self._cycle_order[index],
+            )
 
     def _on_hour_change(self, hour):
         self._shuffle_cycle_colors()
