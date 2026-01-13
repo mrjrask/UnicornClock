@@ -1,6 +1,7 @@
 import json
 import machine
 import network
+import random
 import time
 import ntptime
 import uasyncio as asyncio
@@ -17,6 +18,8 @@ from unicornclock.effects import (
     RainbowMoveEffect,
     SolidMoveEffect,
 )
+from unicornclock.fontdriver import FontDriver
+from unicornclock.fonts import default as default_font
 from unicornclock.utils import debounce, set_time
 from unicornclock.widgets import Calendar
 
@@ -46,6 +49,106 @@ YELLOW = graphics.create_pen(255, 255, 0)
 
 
 SETTINGS_FILE = 'demo.json'
+SHT41_ADDRESS = 0x44
+
+
+class SHT41Sensor:
+    def __init__(self, i2c, address=SHT41_ADDRESS):
+        self.i2c = i2c
+        self.address = address
+
+    @staticmethod
+    def _crc_ok(data, checksum):
+        crc = 0xFF
+        for byte in data:
+            crc ^= byte
+            for _ in range(8):
+                if crc & 0x80:
+                    crc = ((crc << 1) ^ 0x31) & 0xFF
+                else:
+                    crc = (crc << 1) & 0xFF
+        return crc == checksum
+
+    def read_temperature_c(self):
+        try:
+            self.i2c.writeto(self.address, b'\xFD')
+            time.sleep_ms(10)
+            data = self.i2c.readfrom(self.address, 6)
+        except OSError:
+            return None
+
+        if len(data) != 6:
+            return None
+
+        if not self._crc_ok(data[0:2], data[2]):
+            return None
+
+        raw_temp = (data[0] << 8) | data[1]
+        return -45 + 175 * raw_temp / 65535
+
+
+class AdafruitSHT41Sensor:
+    def __init__(self, sht):
+        self.sht = sht
+
+    def read_temperature_c(self):
+        try:
+            return self.sht.temperature
+        except OSError:
+            return None
+
+
+def init_sht41():
+    i2c = machine.I2C(0, scl=Pin(5), sda=Pin(4), freq=400000)
+    try:
+        devices = i2c.scan()
+    except OSError:
+        return None
+
+    if SHT41_ADDRESS not in devices:
+        return None
+
+    try:
+        import adafruit_sht4x
+    except ImportError:
+        return SHT41Sensor(i2c)
+
+    return AdafruitSHT41Sensor(adafruit_sht4x.SHT4x(i2c))
+
+
+class TemperatureDisplay(FontDriver):
+    def __init__(self, galactic, graphics, font_color, background_color):
+        super().__init__(galactic, graphics, default_font)
+        self.font_color = font_color
+        self.background_color = background_color
+        self.screen_width, self.screen_height = graphics.get_bounds()
+
+    def _text_width(self, text):
+        width = 0
+        for _, offset, size in self.get_chars_bounds(text):
+            width = offset + size
+        return width
+
+    def draw_temperature(self, temp_f):
+        text = '{:.1f}F'.format(temp_f)
+        text_width = self._text_width(text)
+        x = max(0, (self.screen_width - text_width) // 2)
+
+        self.graphics.set_pen(self.background_color)
+        self.graphics.clear()
+        self.graphics.set_pen(self.font_color)
+        self.write_text(text, x, 0)
+        self.galactic.update(self.graphics)
+
+    async def run(self, sensor):
+        while True:
+            temperature_c = sensor.read_temperature_c()
+            if temperature_c is not None:
+                temperature_f = temperature_c * 9 / 5 + 32
+                self.draw_temperature(temperature_f)
+
+            wait_seconds = random.randint(240, 540)
+            await asyncio.sleep(wait_seconds)
 
 
 def central_utc_offset():
@@ -406,6 +509,14 @@ async def example():
     print('Default brightness at launch: %.2f' % brightness.galactic.get_brightness())
 
     wlan_connection()
+
+    sensor = init_sht41()
+    if sensor:
+        print('SHT41 detected on Stemma QT, displaying temperature.')
+        temp_display = TemperatureDisplay(galactic, graphics, WHITE, BLACK)
+        asyncio.create_task(brightness.run())
+        asyncio.create_task(temp_display.run(sensor))
+        return
 
     calendar = Calendar(galactic, graphics)
 
