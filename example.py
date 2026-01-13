@@ -351,6 +351,10 @@ async def load_example(effect_index, **kwargs):
         **default_kwargs,
     )
 
+    await clock.update_time(
+        clock.format_time(*clock.get_time())
+    )
+
     asyncio.create_task(clock.run())
 
 mode = 0
