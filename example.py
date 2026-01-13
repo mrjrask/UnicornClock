@@ -168,9 +168,6 @@ def central_utc_offset():
         day = 1 + days_until_weekday + 7 * (n - 1)
         return time.mktime((year, month, day, 0, 0, 0, 0, 0))
 
-    # Ensure we have an accurate UTC time for the comparison.
-    ntptime.settime()
-
     current_utc = time.time()
     year = time.gmtime(current_utc)[0]
 
@@ -223,7 +220,10 @@ def wlan_connection():
 
     wait(ORANGE)
 
-    set_time(central_utc_offset())
+    try:
+        set_time(central_utc_offset())
+    except OSError as err:
+        print('NTP update failed, using RTC time:', err)
 
     wait(GREEN)
 
