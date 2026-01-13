@@ -177,7 +177,7 @@ class Clock(ClockMixin, FontDriver):
             hour, minute, second = self.get_time()
 
             if not await self.need_update(hour, minute, second):
-                asyncio.sleep(0.25)
+                await asyncio.sleep(0.25)
                 continue
 
             if hour != self.last_hour and self.callback_hour_change:
