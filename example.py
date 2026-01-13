@@ -512,11 +512,16 @@ async def example():
 
     sensor = init_sht41()
     if sensor:
-        print('SHT41 detected on Stemma QT, displaying temperature.')
-        temp_display = TemperatureDisplay(galactic, graphics, WHITE, BLACK)
-        asyncio.create_task(brightness.run())
-        asyncio.create_task(temp_display.run(sensor))
-        return
+        temperature_c = sensor.read_temperature_c()
+        if temperature_c is None:
+            print('SHT41 detected but no data, falling back to clock.')
+            sensor = None
+        else:
+            print('SHT41 detected on Stemma QT, displaying temperature.')
+            temp_display = TemperatureDisplay(galactic, graphics, WHITE, BLACK)
+            asyncio.create_task(brightness.run())
+            asyncio.create_task(temp_display.run(sensor))
+            return
 
     calendar = Calendar(galactic, graphics)
 
