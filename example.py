@@ -168,9 +168,6 @@ def central_utc_offset():
         day = 1 + days_until_weekday + 7 * (n - 1)
         return time.mktime((year, month, day, 0, 0, 0, 0, 0))
 
-    # Ensure we have an accurate UTC time for the comparison.
-    ntptime.settime()
-
     current_utc = time.time()
     year = time.gmtime(current_utc)[0]
 
@@ -223,7 +220,10 @@ def wlan_connection():
 
     wait(ORANGE)
 
-    set_time(central_utc_offset())
+    try:
+        set_time(central_utc_offset())
+    except OSError as err:
+        print('NTP update failed, using RTC time:', err)
 
     wait(GREEN)
 
@@ -349,6 +349,10 @@ async def load_example(effect_index, **kwargs):
         galactic,
         graphics,
         **default_kwargs,
+    )
+
+    await clock.update_time(
+        clock.format_time(*clock.get_time())
     )
 
     asyncio.create_task(clock.run())
@@ -512,11 +516,16 @@ async def example():
 
     sensor = init_sht41()
     if sensor:
-        print('SHT41 detected on Stemma QT, displaying temperature.')
-        temp_display = TemperatureDisplay(galactic, graphics, WHITE, BLACK)
-        asyncio.create_task(brightness.run())
-        asyncio.create_task(temp_display.run(sensor))
-        return
+        temperature_c = sensor.read_temperature_c()
+        if temperature_c is None:
+            print('SHT41 detected but no data, falling back to clock.')
+            sensor = None
+        else:
+            print('SHT41 detected on Stemma QT, displaying temperature.')
+            temp_display = TemperatureDisplay(galactic, graphics, WHITE, BLACK)
+            asyncio.create_task(brightness.run())
+            asyncio.create_task(temp_display.run(sensor))
+            return
 
     calendar = Calendar(galactic, graphics)
 
