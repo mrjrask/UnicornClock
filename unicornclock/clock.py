@@ -1,4 +1,3 @@
-import time
 import uasyncio as asyncio
 
 from .common import Clip, ClockMixin, Position
@@ -24,7 +23,6 @@ class Clock(ClockMixin, FontDriver):
     loop_sleep = 0.1
 
     _current_char_hidden = False
-    paused_until = None
 
     def __init__(
             self,
@@ -93,16 +91,6 @@ class Clock(ClockMixin, FontDriver):
         # Used mainly to initialize data in effect class
         if self.callback_after_init:
             self.callback_after_init()
-
-    def pause_for(self, seconds):
-        """Pause updates for a short period so another task can draw."""
-        until = time.time() + seconds
-        if self.paused_until is None or until > self.paused_until:
-            self.paused_until = until
-
-    def resume(self):
-        """Resume updates immediately."""
-        self.paused_until = None
 
     def format_time(self, hour, minute, second):
         if self.am_pm_mode:
@@ -186,17 +174,10 @@ class Clock(ClockMixin, FontDriver):
 
     async def run(self):
         while self.is_running:
-            if self.paused_until is not None:
-                if time.time() < self.paused_until:
-                    await asyncio.sleep(0.1)
-                    continue
-                self.paused_until = None
-                self.full_update()
-
             hour, minute, second = self.get_time()
 
             if not await self.need_update(hour, minute, second):
-                await asyncio.sleep(0.25)
+                asyncio.sleep(0.25)
                 continue
 
             if hour != self.last_hour and self.callback_hour_change:

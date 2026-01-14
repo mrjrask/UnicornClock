@@ -44,14 +44,8 @@ class FontDriver:
         - Size (the full size of the character)
         """
         offset = 0
-        space_dims = self.chars_font_bounds.get(' ')
         for i, char in enumerate(text):
-            if char not in self.chars_font_bounds:
-                if space_dims is None:
-                    continue
-                dims = space_dims
-            else:
-                dims = self.chars_font_bounds[char]
+            dims = self.chars_font_bounds[char]
 
             # The `+1` is because we come from position to have a width
             character_width = dims[1] - dims[0] + 1
@@ -69,10 +63,11 @@ class FontDriver:
 
     def write_char(self, char, x, y=0):
         char = str(char)
-        if char not in self.font:
-            if ' ' not in self.font:
-                return
-            char = ' '
+
+        try:
+            self.font[str(char)]
+        except KeyError:
+            raise Exception("Character '%s' not found in font." % char)
 
         start, _ = self.chars_font_bounds[char]
         for (px, py) in self.iter_pixel(char):
