@@ -16,7 +16,6 @@ UnicornClock is a MicroPython clock and calendar demo for the Pimoroni Galactic 
 * Automatic brightness tied to the Galactic Unicorn light sensor with on-device offsets, or manual brightness control.
 * Persisted settings (`demo.json`) for the current layout, effect, and AM/PM mode.
 * Easily hackable font and effect system so you can extend characters, backgrounds, and animations.
-* Optional SHT41 temperature display over Stemma QT (I2C address `0x44`) that replaces the clock and refreshes every 4–9 minutes when detected.
 
 ## Compatibility
 
