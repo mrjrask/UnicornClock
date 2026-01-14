@@ -117,11 +117,15 @@ def init_sht41():
 
 
 class TemperatureDisplay(FontDriver):
-    def __init__(self, galactic, graphics, font_color, background_color):
+    DISPLAY_HOLD_SECONDS = 10
+    RETRY_DELAY_SECONDS = 5
+
+    def __init__(self, galactic, graphics, font_color, background_color, clock_provider=None):
         super().__init__(galactic, graphics, default_font)
         self.font_color = font_color
         self.background_color = background_color
         self.screen_width, self.screen_height = graphics.get_bounds()
+        self.clock_provider = clock_provider
 
     def _text_width(self, text):
         width = 0
@@ -140,12 +144,24 @@ class TemperatureDisplay(FontDriver):
         self.write_text(text, x, 0)
         self.galactic.update(self.graphics)
 
+    def pause_clock(self, seconds):
+        if not self.clock_provider:
+            return
+        clock = self.clock_provider()
+        if clock:
+            clock.pause_for(seconds)
+
     async def run(self, sensor):
         while True:
             temperature_c = sensor.read_temperature_c()
             if temperature_c is not None:
                 temperature_f = temperature_c * 9 / 5 + 32
+                self.pause_clock(self.DISPLAY_HOLD_SECONDS)
                 self.draw_temperature(temperature_f)
+                await asyncio.sleep(self.DISPLAY_HOLD_SECONDS)
+            else:
+                await asyncio.sleep(self.RETRY_DELAY_SECONDS)
+                continue
 
             wait_seconds = random.randint(240, 540)
             await asyncio.sleep(wait_seconds)
@@ -325,6 +341,9 @@ effects = [
 ]
 
 clock = None
+
+def get_clock():
+    return clock
 
 async def load_example(effect_index, **kwargs):
     global clock
@@ -515,6 +534,7 @@ async def example():
     wlan_connection()
 
     sensor = init_sht41()
+    temp_display = None
     if sensor:
         temperature_c = sensor.read_temperature_c()
         if temperature_c is None:
@@ -522,10 +542,13 @@ async def example():
             sensor = None
         else:
             print('SHT41 detected on Stemma QT, displaying temperature.')
-            temp_display = TemperatureDisplay(galactic, graphics, WHITE, BLACK)
-            asyncio.create_task(brightness.run())
-            asyncio.create_task(temp_display.run(sensor))
-            return
+            temp_display = TemperatureDisplay(
+                galactic,
+                graphics,
+                WHITE,
+                BLACK,
+                clock_provider=get_clock,
+            )
 
     calendar = Calendar(galactic, graphics)
 
@@ -536,6 +559,8 @@ async def example():
     asyncio.create_task(buttons_handler(brightness, calendar, update_calendar))
 
     await load_example(0, callback_hour_change=update_calendar)
+    if temp_display and sensor:
+        asyncio.create_task(temp_display.run(sensor))
 
 
 def main():
