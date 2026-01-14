@@ -22,8 +22,6 @@ class Brightness:
     TARGET_CHANGE_DELAY_MS = 1000
     TARGET_EPSILON = 0.005
     AUTO_POLL_INTERVAL = 0.5
-    STARTUP_GRACE_MS = 5000
-    STARTUP_BRIGHTNESS = 0.15
 
     def __init__(
             self,
@@ -39,7 +37,6 @@ class Brightness:
         self.stable_target = self.get_target_brightness()
         self.pending_target = None
         self.pending_since = None
-        self.startup_time = time.ticks_ms()
 
     def export(self):
         return {
@@ -92,15 +89,7 @@ class Brightness:
     def update(self, *, log_light=False):
         target = self.get_target_brightness(log_light=log_light)
 
-        startup_active = (
-            time.ticks_diff(time.ticks_ms(), self.startup_time)
-            < self.STARTUP_GRACE_MS
-        )
-
         if self.mode == self.MODE_AUTO:
-            if startup_active:
-                target = max(target, self.STARTUP_BRIGHTNESS)
-
             now = time.ticks_ms()
             if self._is_target_close(target, self.stable_target):
                 self.pending_target = None
@@ -122,9 +111,7 @@ class Brightness:
 
         # Smooth transition toward the target brightness.
         step = 0.02
-        if startup_active and self.current_brightness < self.STARTUP_BRIGHTNESS:
-            self.current_brightness = self.STARTUP_BRIGHTNESS
-        elif target > self.current_brightness:
+        if target > self.current_brightness:
             self.current_brightness = min(target, self.current_brightness + step)
         else:
             self.current_brightness = max(target, self.current_brightness - step)

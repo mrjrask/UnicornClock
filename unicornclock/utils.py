@@ -1,6 +1,5 @@
 import machine
 import math
-import micropython
 import ntptime
 import time
 
